@@ -6,17 +6,64 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @Query(sort: [SortDescriptor(\Person.name)]) var people: [Person]
+    @Environment(\.modelContext) var modelContext
+    @State private var isShowingAddView = false
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationStack {
+            VStack {
+                if people.isEmpty {
+                    ContentUnavailableView("No People Yet", systemImage: "person.3", description: Text("Tap + to add someone"))
+                } else {
+                    List{
+                        ForEach(people, id: \.id) { person in
+                            NavigationLink(destination: DetailView(person: person)){
+                                HStack{
+                                    Text(person.name)
+                                    Spacer()
+                                    if let uiImage = UIImage(data: person.photo){
+                                        Image(uiImage: uiImage)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 30 , height: 30)
+                                            .clipShape(Circle())
+                                    }
+                                }
+                            }
+                        }
+                        .onDelete(perform: deletePerson)
+                    }
+                }
+            }
+            .navigationTitle("Remember Names")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing){
+                    Button {
+                        isShowingAddView.toggle()
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarLeading){
+                    EditButton()
+                }
+            }
+            .sheet(isPresented: $isShowingAddView) {
+                AddName()
+            }
         }
-        .padding()
     }
+    func deletePerson(at offsets: IndexSet) {
+        for index in offsets {
+            let person = people[index]
+            modelContext.delete(person)
+        }
+    }
+
 }
 
 #Preview {
